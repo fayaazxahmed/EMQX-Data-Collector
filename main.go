@@ -79,8 +79,8 @@ import (
 
 const protocol = "tcp"
 const broker = "g332f11e.ala.eu-central-1.emqxsl.com"
-const port = 1883
-const topic = "t/1"
+const port = 8084
+const topic = "root/faux/data/#"
 const username = "Fayaaz"
 const password = "FA5"
 
@@ -92,13 +92,13 @@ func main() {
 }
 
 func createMqttClient() mqtt.Client {
-	connectAddress := fmt.Sprintf("%s://%s:%s", protocol, broker, port)
+	connectAddress := fmt.Sprintf("%s://%s:%d", protocol, broker, port)
 	//rand.Seed(time.Now().UnixNano())
 	clientID := "emqx_cloude096fd" //fmt.Sprintf("go-client-%d", rand.Int())
 
 	fmt.Println("connect address: ", connectAddress)
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker("g332f11e.ala.eu-central-1.emqxsl.com")
+	opts.AddBroker(connectAddress)
 	opts.SetUsername(username)
 	opts.SetPassword(password)
 	opts.SetClientID(clientID)
