@@ -77,7 +77,7 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-const protocol = "tcp"
+const protocol = "wss"
 const broker = "g332f11e.ala.eu-central-1.emqxsl.com"
 const port = 8084
 const topic = "root/faux/data/#"
@@ -143,7 +143,7 @@ func loadTLSConfig(caFile string) *tls.Config {
 	tlsConfig.InsecureSkipVerify = false
 	if caFile != "" {
 		certpool := x509.NewCertPool()
-		ca, err := os.ReadFile(caFile)
+		ca, err := os.ReadFile("emqxsl-ca.crt")
 		if err != nil {
 			log.Fatal(err.Error())
 		}
@@ -152,21 +152,3 @@ func loadTLSConfig(caFile string) *tls.Config {
 	}
 	return &tlsConfig
 }
-
-/*
-func loadTLSConfig(caFile string) *tls.Config {
-	// load tls config
-	var tlsConfig tls.Config
-	tlsConfig.InsecureSkipVerify = false
-	if caFile != "" {
-		certpool := x509.NewCertPool()
-		ca, err := ioutil.ReadFile(caFile)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		certpool.AppendCertsFromPEM(ca)
-		tlsConfig.RootCAs = certpool
-	}
-	return &tlsConfig
-}
-*/
