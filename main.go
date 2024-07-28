@@ -98,19 +98,20 @@ func createMqttClient() mqtt.Client {
 
 	fmt.Println("connect address: ", connectAddress)
 	opts := mqtt.NewClientOptions()
+
 	opts.AddBroker(connectAddress)
 	opts.SetUsername(username)
 	opts.SetPassword(password)
 	opts.SetClientID(clientID)
 	opts.SetKeepAlive(time.Second * 60)
 
-	// Optional: set server CA
+	opts.SetTLSConfig(loadTLSConfig("emqxsl-ca.crt"))
 	opts.SetTLSConfig(loadTLSConfig("main.go"))
 
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
-	if token.WaitTimeout(3*time.Second) && token.Error() != nil {
-		log.Fatal(token.Error())
+	if token.WaitTimeout(10*time.Second) && token.Error() != nil {
+		log.Printf("\nConnection error: %s\n", token.Error())
 	}
 	return client
 }
@@ -141,14 +142,17 @@ func loadTLSConfig(caFile string) *tls.Config {
 	// load tls config
 	var tlsConfig tls.Config
 	tlsConfig.InsecureSkipVerify = false
-	if caFile != "" {
-		certpool := x509.NewCertPool()
-		ca, err := os.ReadFile("emqxsl-ca.crt")
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		certpool.AppendCertsFromPEM(ca)
-		tlsConfig.RootCAs = certpool
+	//if caFile != "" {
+	certpool := x509.NewCertPool()
+	ca, err := os.ReadFile(caFile)
+	if err != nil {
+		log.Fatal(err.Error())
 	}
-	return &tlsConfig
+	certpool.AppendCertsFromPEM(ca)
+	tlsConfig.RootCAs = certpool
+	//}
+	return &tls.Config{
+		RootCAs:    certpool,
+		ServerName: broker,
+	}
 }
