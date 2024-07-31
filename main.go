@@ -77,9 +77,9 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-const protocol = "wss"
+const protocol = "ssl"
 const broker = "g332f11e.ala.eu-central-1.emqxsl.com"
-const port = 8084
+const port = 8883
 const topic = "root/faux/data/#"
 const username = "Fayaaz"
 const password = "FA5"
@@ -105,7 +105,7 @@ func createMqttClient() mqtt.Client {
 	opts.SetClientID(clientID)
 	opts.SetKeepAlive(time.Second * 60)
 
-	opts.SetTLSConfig(loadTLSConfig("emqxsl-ca.crt"))
+	opts.SetTLSConfig(loadTLSConfig("emqxsl-ca.pem"))
 	opts.SetTLSConfig(loadTLSConfig("main.go"))
 
 	client := mqtt.NewClient(opts)
@@ -141,18 +141,15 @@ func subscribe(client mqtt.Client) {
 func loadTLSConfig(caFile string) *tls.Config {
 	// load tls config
 	var tlsConfig tls.Config
-	tlsConfig.InsecureSkipVerify = false
-	//if caFile != "" {
-	certpool := x509.NewCertPool()
-	ca, err := os.ReadFile(caFile)
-	if err != nil {
-		log.Fatal(err.Error())
+	tlsConfig.InsecureSkipVerify = true
+	if caFile != "" {
+		certpool := x509.NewCertPool()
+		ca, err := os.ReadFile(caFile)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		certpool.AppendCertsFromPEM(ca)
+		tlsConfig.RootCAs = certpool
 	}
-	certpool.AppendCertsFromPEM(ca)
-	tlsConfig.RootCAs = certpool
-	//}
-	return &tls.Config{
-		RootCAs:    certpool,
-		ServerName: broker,
-	}
+	return &tlsConfig
 }
