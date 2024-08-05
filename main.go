@@ -22,8 +22,8 @@ const password = "FA5"
 
 func main() {
 	client := createMqttClient()
-	go subscribe(client)        // we use goroutine to run the subscription function
-	time.Sleep(time.Second * 1) // pause 1s to wait for the subscription function to be ready
+	go subscribe(client)         // we use goroutine to run the subscription function
+	time.Sleep(time.Second * 10) // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function won't receive messages
 	subscribe(client)
 }
 
@@ -55,7 +55,7 @@ func createMqttClient() mqtt.Client {
 func subscribe(client mqtt.Client) {
 	qos := 0
 	client.Subscribe(topic, byte(qos), func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("Received message: %s ,from topic: %s \n", msg.Payload(), msg.Topic())
+		fmt.Printf("Received message: %s, from topic: %s \n", msg.Payload(), msg.Topic())
 	})
 }
 
