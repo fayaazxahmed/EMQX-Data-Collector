@@ -15,6 +15,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
+// Struct containing the message information that is inserted into the database. Primary key and last measured timestamp are updated automatically so they are not included
 type Message struct {
 	topic_name  string
 	measurement string
@@ -22,6 +23,7 @@ type Message struct {
 
 var db *sql.DB
 
+// Update constants for specific deployment being connected to
 const protocol = "ssl"
 const broker = "g332f11e.ala.eu-central-1.emqxsl.com"
 const port = 8883
@@ -32,12 +34,12 @@ const password = "FA5"
 func main() {
 	client := createMqttClient()
 	go subscribe(client)         // we use goroutine to run the subscription function
-	time.Sleep(time.Second * 10) // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function won't receive messages
+	time.Sleep(time.Second * 10) // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
 	var broker_msg = subscribe(client)
 
 	cfg := mysql.Config{
-		User:                 os.Getenv("DBUSER"),
-		Passwd:               os.Getenv("DBPASS"),
+		User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
+		Passwd:               os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "games",
@@ -59,8 +61,7 @@ func main() {
 
 func createMqttClient() mqtt.Client {
 	connectAddress := fmt.Sprintf("%s://%s:%d", protocol, broker, port)
-	//rand.Seed(time.Now().UnixNano())
-	clientID := "emqx_cloude096fd" //fmt.Sprintf("go-client-%d", rand.Int())
+	clientID := "emqx_cloude096fd"
 
 	fmt.Println("connect address: ", connectAddress)
 	opts := mqtt.NewClientOptions()
@@ -109,6 +110,7 @@ func loadTLSConfig(caFile string) *tls.Config {
 }
 
 func createTable(db *sql.DB) {
+	//SQL script to create the table that will store the messages retrieved from the broker
 	query := `DROP TABLE IF EXISTS emqx_messages;
 		CREATE TABLE emqx_messages (
 			sensor_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -127,6 +129,7 @@ func tableInsert(db *sql.DB, message Message) int {
 	query := `INSERT INTO message (topic_name, measurement)
 		VALUES ($1, $2, $3) RETURNING sensor_id`
 
+	//Executes the SQL query and adds a row to the table and stored in the primary key variable, assigning it a primary key
 	var primary_key int
 	err := db.QueryRow(query, message.topic_name, message.measurement).Scan(primary_key)
 	if err != nil {
