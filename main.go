@@ -52,7 +52,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	createTable(db)
 
 	msg := Message{topic, broker_msg}
 	tableInsert(db, msg)
@@ -109,22 +108,6 @@ func loadTLSConfig(caFile string) *tls.Config {
 	return &tlsConfig
 }
 
-func createTable(db *sql.DB) {
-	//SQL script to create the table that will store the messages retrieved from the broker
-	query := `DROP TABLE IF EXISTS emqx_messages;
-			CREATE TABLE emqx_messages (
-			sensor_id INT AUTO_INCREMENT PRIMARY KEY,
-  			topic_name VARCHAR(128) NOT NULL,
-  			measurement VARCHAR(128) NOT NULL,
-  			last_measured timestamp DEFAULT NOW()
-		)`
-
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func tableInsert(db *sql.DB, message Message) int {
 	query := `INSERT INTO emqx_messages (topic_name, measurement, last_measured)
 		VALUES (?, ?, NOW())`
@@ -134,6 +117,7 @@ func tableInsert(db *sql.DB, message Message) int {
 		log.Fatal(err)
 	}
 
+	//Gets the ID for the
 	lastInsertId, err := last_entry.LastInsertId()
 	if err != nil {
 		log.Fatal(err)
