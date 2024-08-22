@@ -1,16 +1,16 @@
 # EMQX Data Collector
-#### The EMQX Data Collector program is used to connect to an online EMQX broker to retrieve and store the message data sent through the broker in a local SQL database.
+#### The EMQX Data Collector program is used to connect to an online EMQX broker to retrieve and store the message data sent through the broker in a local SQL database
 This program has been designed primarily to collect and store the readings sent from various sensors and store them locally for easy access in the future. Your computer can subscribe to an MQTT topic to retrieve and store all data sent to that topic 
 from any device using this program, allowing for quick and simple storage of IoT device data.
 
 ## Setup and Run
 #### Make sure you have MySQL installed and an active EMQX deployment
-Run the following command to log into MySQL, and enter your system password
+Run the following command to log into MySQL, and enter your system password:
 ```
 mysql -u root -p
 ```
 
-After logging in, run the following commands to set a username/password and to create and use a new database for holding the tables with the EMQX Data, respectively
+After logging in, run the following commands to set a username/password and to create and use a new database for holding the tables with the EMQX Data, respectively.
 ```
 mysql> CREATE USER 'username'@'host' IDENTIFIED WITH authentication_plugin BY 'password';
 mysql> CREATE DATABASE emqx_data;
@@ -22,7 +22,7 @@ mysql> USE DATABASE emqx_data;
 
 Now you can start entering the connection details for your deployment in *main.go*
 
-Keeping the protocol and ports unchanged, enter the connection address, topic, and username/password for your EMQX instance.
+Keeping the protocol and ports unchanged, enter the connection address, topic, and username/password for your EMQX instance:
 ```
 const protocol = "ssl"
 const broker =
