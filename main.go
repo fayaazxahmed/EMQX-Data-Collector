@@ -42,7 +42,7 @@ func main() {
 		Passwd:               os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
-		DBName:               "games",
+		DBName:               "emqx_data",
 		AllowNativePasswords: true,
 	}
 
@@ -54,7 +54,7 @@ func main() {
 	defer db.Close()
 	createTable(db)
 
-	msg := Message{broker_msg, topic}
+	msg := Message{topic, broker_msg}
 	tableInsert(db, msg)
 
 }
@@ -112,7 +112,7 @@ func loadTLSConfig(caFile string) *tls.Config {
 func createTable(db *sql.DB) {
 	//SQL script to create the table that will store the messages retrieved from the broker
 	query := `DROP TABLE IF EXISTS emqx_messages;
-		CREATE TABLE emqx_messages (
+			CREATE TABLE emqx_messages (
 			sensor_id INT AUTO_INCREMENT PRIMARY KEY,
   			topic_name VARCHAR(128) NOT NULL,
   			measurement VARCHAR(128) NOT NULL,
@@ -126,15 +126,18 @@ func createTable(db *sql.DB) {
 }
 
 func tableInsert(db *sql.DB, message Message) int {
-	query := `INSERT INTO message (topic_name, measurement)
-		VALUES ($1, $2, $3) RETURNING sensor_id`
+	query := `INSERT INTO emqx_messages (topic_name, measurement, last_measured)
+		VALUES (?, ?, NOW())`
 
-	//Executes the SQL query and adds a row to the table and stored in the primary key variable, assigning it a primary key
-	var primary_key int
-	err := db.QueryRow(query, message.topic_name, message.measurement).Scan(primary_key)
+	last_entry, err := db.Exec(query, message.topic_name, message.measurement)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return primary_key
+	lastInsertId, err := last_entry.LastInsertId()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return int(lastInsertId)
 }
