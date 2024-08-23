@@ -35,7 +35,7 @@ func main() {
 	client := createMqttClient()
 	go subscribe(client)         // we use goroutine to run the subscription function
 	time.Sleep(time.Second * 10) // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
-	var broker_msg = subscribe(client)
+	var broker_msg, broker_topic = subscribe(client)
 
 	cfg := mysql.Config{
 		User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
@@ -53,7 +53,7 @@ func main() {
 	}
 	defer db.Close()
 
-	msg := Message{topic, broker_msg}
+	msg := Message{broker_topic, broker_msg}
 	tableInsert(db, msg)
 
 }
@@ -82,14 +82,17 @@ func createMqttClient() mqtt.Client {
 	return client
 }
 
-func subscribe(client mqtt.Client) string {
+func subscribe(client mqtt.Client) (string, string) {
 	qos := 0
 	broker_msg := make(chan string)
+	broker_topic := make(chan string)
 	client.Subscribe(topic, byte(qos), func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Printf("Received message: %s, from topic: %s \n", msg.Payload(), msg.Topic())
 		broker_msg <- string(msg.Payload())
+		broker_topic <- string(msg.Topic())
 	})
-	return <-broker_msg
+
+	return (<-broker_msg), (<-broker_topic)
 }
 
 func loadTLSConfig(caFile string) *tls.Config {
