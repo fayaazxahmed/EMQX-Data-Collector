@@ -14,7 +14,7 @@ After logging in, run the following commands to set a username/password and to c
 ```
 mysql> CREATE USER 'username'@'host' IDENTIFIED WITH authentication_plugin BY 'password';
 mysql> CREATE DATABASE emqx_data;
-mysql> USE DATABASE emqx_data;
+mysql> USE emqx_data;
 ```
 >[!NOTE]
 > __Optional:__ Set two environment variables, DBUSER and DBPASS, to store your SQL username and password.\
@@ -49,3 +49,5 @@ Finally, run the following command in your project directory and this program wi
 ```
 go run .
 ```
+>[!NOTE]
+>If you encounter any errors with create-tables.sql such as the SQL tables not being created correctly, log into MySQL from your terminal and run the SQL script from that file to create the tables
