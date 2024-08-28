@@ -33,9 +33,8 @@ const password = "FA5"
 
 func main() {
 	client := createMqttClient()
-	go subscribe(client)         // we use goroutine to run the subscription function
-	time.Sleep(time.Second * 10) // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
-	var broker_msg, broker_topic, sensor_name = subscribe(client)
+	time.Sleep(time.Second * 10)                                  // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
+	var broker_msg, broker_topic, sensor_name = subscribe(client) // we use goroutine to run the subscription function, and store the returned message data in various variables
 
 	cfg := mysql.Config{
 		User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
