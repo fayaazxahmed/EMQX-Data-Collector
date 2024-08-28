@@ -1,11 +1,9 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
 	"database/sql"
 	"fmt"
-	"os"
+	"strings"
 
 	//"io/ioutil"
 	"log"
@@ -19,6 +17,7 @@ import (
 type Message struct {
 	topic_name  string
 	measurement string
+	sensor_name string
 }
 
 var db *sql.DB
@@ -35,11 +34,11 @@ func main() {
 	client := createMqttClient()
 	go subscribe(client)         // we use goroutine to run the subscription function
 	time.Sleep(time.Second * 10) // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
-	var broker_msg, broker_topic = subscribe(client)
+	var broker_msg, broker_topic, sensor_name = subscribe(client)
 
 	cfg := mysql.Config{
-		User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
-		Passwd:               os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
+		User:                 "Fayaaz", //os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
+		Passwd:               "FA5",    //os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "emqx_data",
@@ -53,7 +52,7 @@ func main() {
 	}
 	defer db.Close()
 
-	msg := Message{broker_topic, broker_msg}
+	msg := Message{broker_topic, broker_msg, sensor_name}
 	tableInsert(db, msg)
 
 }
@@ -71,9 +70,6 @@ func createMqttClient() mqtt.Client {
 	opts.SetClientID(clientID)
 	opts.SetKeepAlive(time.Second * 60)
 
-	opts.SetTLSConfig(loadTLSConfig("emqxsl-ca.pem"))
-	opts.SetTLSConfig(loadTLSConfig("main.go"))
-
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 	if token.WaitTimeout(10*time.Second) && token.Error() != nil {
@@ -82,35 +78,23 @@ func createMqttClient() mqtt.Client {
 	return client
 }
 
-func subscribe(client mqtt.Client) (string, string) {
+func subscribe(client mqtt.Client) (string, string, string) {
 	qos := 0
 	broker_msg := make(chan string)
 	broker_topic := make(chan string)
+	sensor_name := make(chan string)
 	client.Subscribe(topic, byte(qos), func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Printf("Received message: %s, from topic: %s \n", msg.Payload(), msg.Topic())
+		split := strings.Split(string(msg.Topic()), "/")
 		broker_msg <- string(msg.Payload())
 		broker_topic <- string(msg.Topic())
+		sensor_name <- split[3]
 	})
 
-	return (<-broker_msg), (<-broker_topic)
+	return (<-broker_msg), (<-broker_topic), (<-sensor_name)
 }
 
-func loadTLSConfig(caFile string) *tls.Config {
-	// load tls config
-	var tlsConfig tls.Config
-	tlsConfig.InsecureSkipVerify = true
-	if caFile != "" {
-		certpool := x509.NewCertPool()
-		ca, err := os.ReadFile(caFile)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		certpool.AppendCertsFromPEM(ca)
-		tlsConfig.RootCAs = certpool
-	}
-	return &tlsConfig
-}
-
+/*
 func tableInsert(db *sql.DB, message Message) int {
 	query := `INSERT INTO emqx_messages (topic_name, measurement, last_measured)
 		VALUES (?, ?, NOW())`
@@ -120,11 +104,89 @@ func tableInsert(db *sql.DB, message Message) int {
 		log.Fatal(err)
 	}
 
-	//Gets the ID for the
+	//Gets the ID for the last entry in the table
 	lastInsertId, err := last_entry.LastInsertId()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	return int(lastInsertId)
+}
+*/
+
+func tableInsert(db *sql.DB, message Message) int {
+	topicIDQuery := `SELECT * FROM Topics WHERE topicName = ?`
+	var topicID int
+	//Check if that topic is already inside the Topics table
+	topicIDRow, err := db.Query(topicIDQuery, message.topic_name)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer topicIDRow.Close()
+
+	// insert topic into Topics (if needed) and log into Logs
+	if topicIDRow.Next() {
+	} else {
+		query := `INSERT INTO Topics (topicName)
+				VALUES (?)`
+
+		lastTopicID, err := db.Exec(query, message.topic_name)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//Gets the ID for the last entry in the table
+		lastInsertId, err := lastTopicID.LastInsertId()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("New topic added with ID: %d\n", lastInsertId)
+	}
+
+	return topicID
+
+	/*
+		logInsertQuery := `INSERT INTO Logs (topicID, measurement, measureTime)`
+		if topicID == 0 {
+			topicInsertQuery := `INSERT INTO Topics (topicName)
+				VALUES (?)`
+			topic_entry, err := db.Exec(topicInsertQuery, message.sensor_name)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			topicID, err := topic_entry.LastInsertId()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log_entry, err := db.Exec(logInsertQuery, topicID, message.measurement)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			//Gets the ID for the
+			lastInsertId, err := log_entry.LastInsertId()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			return int(lastInsertId)
+
+		} else {
+			log_entry, err := db.Exec(logInsertQuery, topicID, message.measurement)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			//Gets the ID for the
+			lastInsertId, err := log_entry.LastInsertId()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			return int(lastInsertId)
+		}
+	*/
 }
