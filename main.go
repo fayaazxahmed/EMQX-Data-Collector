@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	//"io/ioutil"
@@ -37,8 +38,8 @@ func main() {
 	var broker_msg, broker_topic, sensor_name = subscribe(client)
 
 	cfg := mysql.Config{
-		User:                 "Fayaaz", //os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
-		Passwd:               "FA5",    //os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
+		User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
+		Passwd:               os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1:3306",
 		DBName:               "emqx_data",
@@ -115,19 +116,12 @@ func tableInsert(db *sql.DB, message Message) int {
 */
 
 func tableInsert(db *sql.DB, message Message) int {
-	topicIDQuery := `SELECT * FROM Topics WHERE topicName = ?`
+	topicIDQuery := `SELECT topicID FROM Topics WHERE topicName = ?`
 	var topicID int
-	//Check if that topic is already inside the Topics table
-	topicIDRow, err := db.Query(topicIDQuery, message.topic_name)
+	//Check if that topic is already inside the Topics table and retrieves it's topicID if it is in the table
+	err := db.QueryRow(topicIDQuery, message.topic_name).Scan(&topicID)
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer topicIDRow.Close()
-
-	// insert topic into Topics (if needed) and log into Logs
-	if topicIDRow.Next() {
-	} else {
+		//Inserts topic into the table if it's a new topic
 		query := `INSERT INTO Topics (topicName)
 				VALUES (?)`
 
@@ -144,49 +138,16 @@ func tableInsert(db *sql.DB, message Message) int {
 		fmt.Printf("New topic added with ID: %d\n", lastInsertId)
 	}
 
-	return topicID
+	//After checking the Topics table to see if the topic exists, insert the message data and timestamp into the data, as well as the topic ID as a foreign key
+	logInsertQuery := `INSERT INTO Logs (topicID, measurement, measureTime) VALUES (?, ?, NOW())`
+	logInsert, err := db.Exec(logInsertQuery, topicID, message.measurement)
+	if err != nil {
+		log.Fatal(err)
+	}
+	lastInsertID, err := logInsert.LastInsertId()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	/*
-		logInsertQuery := `INSERT INTO Logs (topicID, measurement, measureTime)`
-		if topicID == 0 {
-			topicInsertQuery := `INSERT INTO Topics (topicName)
-				VALUES (?)`
-			topic_entry, err := db.Exec(topicInsertQuery, message.sensor_name)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			topicID, err := topic_entry.LastInsertId()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			log_entry, err := db.Exec(logInsertQuery, topicID, message.measurement)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			//Gets the ID for the
-			lastInsertId, err := log_entry.LastInsertId()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			return int(lastInsertId)
-
-		} else {
-			log_entry, err := db.Exec(logInsertQuery, topicID, message.measurement)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			//Gets the ID for the
-			lastInsertId, err := log_entry.LastInsertId()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			return int(lastInsertId)
-		}
-	*/
+	return int(lastInsertID)
 }
