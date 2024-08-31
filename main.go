@@ -33,7 +33,7 @@ const topic = "root/faux/data/#"
 const username = "Fayaaz"
 const password = "FA5"
 
-// SQL Server connection details
+// SQL Server connection details, comment out if working with a local database
 var server = "localhost"        // Your SQL Server hostname
 var mssql_port = 1433           // Default SQL Server port
 var user = "UofGIoT"            // Your SQL Server username
@@ -45,6 +45,7 @@ func main() {
 	time.Sleep(time.Second * 10)                                  // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
 	var broker_msg, broker_topic, sensor_name = subscribe(client) // we use goroutine to run the subscription function, and store the returned message data in various variables
 
+	//If working with local databases, Put in your credentials into the field below
 	/*
 		cfg := mysql.Config{
 			User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
@@ -57,7 +58,7 @@ func main() {
 	*/
 
 	// Form the connection string
-	connectionString := fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s", user, passwd, server, mssql_port, database)
+	connectionString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;", server, user, passwd, mssql_port, database)
 
 	var err error
 	db, err = sql.Open("sqlserver", connectionString)
