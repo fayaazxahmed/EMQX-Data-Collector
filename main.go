@@ -3,17 +3,15 @@ package main
 import (
 	"database/sql"
 	"fmt"
-
-	//"os"
+	"os"
 	"strings"
 
 	//"io/ioutil"
 	"log"
 	"time"
 
-	_ "github.com/denisenkom/go-mssqldb"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	//"github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 )
 
 // Struct containing the message information that is inserted into the database. Primary key and last measured timestamp are updated automatically so they are not included
@@ -33,35 +31,22 @@ const topic = "root/faux/data/#"
 const username = "Fayaaz"
 const password = "FA5"
 
-// SQL Server connection details, comment out if working with a local database
-var server = "localhost"        // Your SQL Server hostname
-var mssql_port = 1433           // Default SQL Server port
-var user = "UofGIoT"            // Your SQL Server username
-var passwd = "Iq1sAd7AVVK5UUR"  // Your SQL Server password
-var database = "emqx_data_test" // Your database name
-
 func main() {
 	client := createMqttClient()
 	time.Sleep(time.Second * 10)                                  // pause minimum of 2 seconds to wait for the subscription function to be ready, otherwise subscriber function doesn't receive messages
 	var broker_msg, broker_topic, sensor_name = subscribe(client) // we use goroutine to run the subscription function, and store the returned message data in various variables
 
-	//If working with local databases, Put in your credentials into the field below
-	/*
-		cfg := mysql.Config{
-			User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
-			Passwd:               os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
-			Net:                  "tcp",
-			Addr:                 "127.0.0.1:3306",
-			DBName:               "emqx_data",
-			AllowNativePasswords: true,
-		}
-	*/
-
-	// Form the connection string
-	connectionString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;", server, user, passwd, mssql_port, database)
+	cfg := mysql.Config{
+		User:                 os.Getenv("DBUSER"), //Set DBUSER and DBPASS environment variables
+		Passwd:               os.Getenv("DBPASS"), //Alternatively, the SQL username and password can also be set manually without using environment variables but that will make them visible to the public if published to a public repository
+		Net:                  "tcp",
+		Addr:                 "127.0.0.1:3306",
+		DBName:               "emqx_data",
+		AllowNativePasswords: true,
+	}
 
 	var err error
-	db, err = sql.Open("sqlserver", connectionString)
+	db, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatal(err)
 	}
